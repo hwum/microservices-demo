@@ -2,13 +2,26 @@
 
 This directory contains Terraform configuration to deploy the Online Boutique microservices demo to Amazon EKS.
 
+## Service Endpoint
+
+**Live URL:** http://a82f066205230497c9eba56db1d0e5c7-565300457.us-east-1.elb.amazonaws.com/
+
 ## Prerequisites
 
-1. AWS CLI installed and configured with credentials for account 388276022184
-2. Terraform >= 1.0 installed
-3. kubectl installed
+1. **ADA credentials tool** installed (for AWS credential management)
+2. **AWS CLI** installed and configured
+3. **Terraform** >= 1.0 installed
+4. **kubectl** installed
 
 ## Deployment Steps
+
+### 0. Configure AWS Credentials
+
+Before deploying, update your AWS credentials for account 388276022184:
+
+```bash
+ada credentials update --account=388276022184 --provider=isengard --role=Admin --once
+```
 
 ### 1. Initialize and Apply Terraform
 
@@ -62,6 +75,19 @@ Look for the `EXTERNAL-IP` column. It will show a Load Balancer DNS name like:
 Access the application at: `http://<EXTERNAL-IP>`
 
 Note: It may take a few minutes for the Load Balancer to become active.
+
+### 6. Troubleshooting - If Webpage Not Loading
+
+If the Load Balancer is provisioned but the webpage is not loading, you may need to manually configure the listener:
+
+```bash
+aws elb create-load-balancer-listeners \
+  --load-balancer-name a82f066205230497c9eba56db1d0e5c7 \
+  --listeners "Protocol=TCP,LoadBalancerPort=80,InstanceProtocol=TCP,InstancePort=30827" \
+  --region us-east-1
+```
+
+Replace the load balancer name and instance port with your actual values if different.
 
 ## Clean Up
 
