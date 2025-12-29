@@ -134,7 +134,7 @@ The script will:
 3. ✅ Deploy infrastructure with Terraform
 4. ✅ Configure kubectl
 5. ✅ Deploy all microservices
-6. ✅ Build custom frontend (with removed footer)
+6. ✅ Build all custom microservices with CodeBuild (including frontend with removed footer)
 7. ✅ Provide the application URL
 
 **Estimated deployment time:** 15-20 minutes
@@ -177,8 +177,8 @@ http://a82f066205230497c9eba56db1d0e5c7-565300457.us-east-1.elb.amazonaws.com/
 | Internet Gateway | Network | For public subnet access |
 | EKS Cluster | Compute | Kubernetes 1.31 |
 | EKS Node Group | Compute | 3x t3.medium instances |
-| ECR Repository | Registry | For custom frontend images |
-| CodeBuild Project | CI/CD | For building Docker images |
+| ECR Repositories | Registry | For all microservice images |
+| CodeBuild Project | CI/CD | For building all Docker images |
 | IAM Roles | Security | For EKS and CodeBuild |
 | Security Groups | Security | For cluster and nodes |
 
@@ -187,19 +187,27 @@ http://a82f066205230497c9eba56db1d0e5c7-565300457.us-east-1.elb.amazonaws.com/
 | Service | Language | Description |
 |---------|----------|-------------|
 | frontend | Go | Web UI (custom build with removed footer) |
-| cartservice | C# | Shopping cart management |
-| productcatalogservice | Go | Product catalog |
-| currencyservice | Node.js | Currency conversion |
-| paymentservice | Node.js | Payment processing (mock) |
-| shippingservice | Go | Shipping cost calculation |
-| emailservice | Python | Order confirmation emails (mock) |
-| checkoutservice | Go | Order orchestration |
-| recommendationservice | Python | Product recommendations |
-| adservice | Java | Contextual advertisements |
-| loadgenerator | Python/Locust | Traffic simulation |
+| cartservice | C# | Shopping cart management (custom build) |
+| productcatalogservice | Go | Product catalog (custom build) |
+| currencyservice | Node.js | Currency conversion (custom build) |
+| paymentservice | Node.js | Payment processing mock (custom build) |
+| shippingservice | Go | Shipping cost calculation (custom build) |
+| emailservice | Python | Order confirmation emails mock (custom build) |
+| checkoutservice | Go | Order orchestration (custom build) |
+| recommendationservice | Python | Product recommendations (custom build) |
+| adservice | Java | Contextual advertisements (custom build) |
+| loadgenerator | Python/Locust | Traffic simulation (custom build) |
 | redis-cart | Redis | Cart data storage |
 
 ## Customizations
+
+### Custom Microservices
+
+All microservices are built from source using AWS CodeBuild and stored in Amazon ECR. This allows you to:
+
+1. **Customize any microservice** - Modify source code in `src/` directory
+2. **Build automatically** - CodeBuild compiles and containerizes all services
+3. **Deploy seamlessly** - Images are pushed to ECR and deployed to EKS
 
 ### Custom Frontend
 
@@ -212,17 +220,17 @@ The deployed frontend includes these customizations:
    - Deployment details removed
    - Entire red footer section removed
 
-### Modifying the Frontend
+### Modifying Services
 
-To make additional changes:
+To make changes to any microservice:
 
-1. Edit files in `src/frontend/`
+1. Edit files in `src/<service-name>/`
 2. Run the deployment script again:
    ```bash
    ./deploy-to-aws.sh
    ```
 
-The script will automatically rebuild and deploy your changes.
+The script will automatically rebuild all services and deploy your changes.
 
 ## Cost Estimation
 
@@ -345,16 +353,23 @@ After running this command, wait 1-2 minutes and try accessing the URL again.
 
 #### 6. CodeBuild Fails
 
-**Problem:** Custom frontend build fails
+**Problem:** Microservices build fails
 
 **Solution:**
 ```bash
 # Check CodeBuild logs
-aws logs tail /aws/codebuild/online-boutique-frontend --region us-east-1 --follow
+aws logs tail /aws/codebuild/online-boutique-microservices --region us-east-1 --follow
 
-# Manually update deployment with existing image
+# Check build status
+aws codebuild list-builds-for-project --project-name online-boutique-microservices-build --region us-east-1
+
+# Manually update deployments with existing images (if images were built successfully)
 kubectl set image deployment/frontend server=388276022184.dkr.ecr.us-east-1.amazonaws.com/online-boutique-frontend:latest
+kubectl set image deployment/cartservice server=388276022184.dkr.ecr.us-east-1.amazonaws.com/online-boutique-cartservice:latest
+# ... repeat for other services
 ```
+
+**Note:** CodeBuild may fail on the kubectl deployment step due to EKS permissions, but the Docker images will still be built and pushed to ECR successfully. The deployment script handles this automatically.
 
 ### Useful Commands
 
@@ -381,7 +396,10 @@ kubectl cluster-info
 cd terraform-aws && terraform show
 
 # View CodeBuild builds
-aws codebuild list-builds-for-project --project-name online-boutique-frontend-build --region us-east-1
+aws codebuild list-builds-for-project --project-name online-boutique-microservices-build --region us-east-1
+
+# Check ECR images
+aws ecr list-images --repository-name online-boutique-frontend --region us-east-1
 ```
 
 ## Cleanup

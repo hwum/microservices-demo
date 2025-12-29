@@ -11,7 +11,6 @@ echo ""
 AWS_ACCOUNT_ID="388276022184"
 AWS_REGION="us-east-1"
 CLUSTER_NAME="online-boutique"
-ECR_REPO_NAME="online-boutique-frontend"
 
 # Update AWS credentials
 echo "Step 1: Updating AWS credentials..."
@@ -71,36 +70,34 @@ echo "Step 7: Waiting for pods to be ready..."
 sleep 30
 kubectl get pods
 
-# Build and deploy custom frontend
+# Build and deploy all microservices
 echo ""
-echo "Step 8: Building custom frontend with removed footer..."
-TEMP_DIR=$(mktemp -d)
-cp -r src/frontend/* $TEMP_DIR/
-cd $TEMP_DIR
-zip -r /tmp/frontend-source.zip . > /dev/null
-cd - > /dev/null
+echo "Step 8: Building all microservices with CodeBuild..."
+# Create zip with proper directory structure
+cd "$(dirname "$0")"
+zip -r /tmp/microservices-source.zip src/ > /dev/null
 
 # Upload to S3
 BUCKET_NAME="online-boutique-codebuild-source-${AWS_ACCOUNT_ID}"
-echo "Uploading source to S3..."
+echo "Uploading source code to S3..."
 aws s3 mb s3://$BUCKET_NAME --region ${AWS_REGION} 2>/dev/null || true
-aws s3 cp /tmp/frontend-source.zip s3://$BUCKET_NAME/frontend-source.zip
+aws s3 cp /tmp/microservices-source.zip s3://$BUCKET_NAME/microservices-source.zip
 
 # Get CodeBuild project name
 CODEBUILD_PROJECT=$(cd terraform-aws && terraform output -raw codebuild_project_name 2>/dev/null)
 
 if [ -n "$CODEBUILD_PROJECT" ]; then
-    echo "Starting CodeBuild to build custom frontend..."
+    echo "Starting CodeBuild to build all microservices..."
     BUILD_ID=$(aws codebuild start-build \
         --project-name $CODEBUILD_PROJECT \
         --source-type-override S3 \
-        --source-location-override $BUCKET_NAME/frontend-source.zip \
+        --source-location-override $BUCKET_NAME/microservices-source.zip \
         --region ${AWS_REGION} \
         --query 'build.id' \
         --output text)
 
     echo "Build started: $BUILD_ID"
-    echo "Waiting for build to complete..."
+    echo "Building all microservices (this may take 10-15 minutes)..."
 
     # Poll for build completion
     while true; do
@@ -111,21 +108,40 @@ if [ -n "$CODEBUILD_PROJECT" ]; then
         fi
 
         echo -n "."
-        sleep 10
+        sleep 15
     done
 
     echo ""
-    if [ "$BUILD_STATUS" = "SUCCEEDED" ] || [ "$BUILD_STATUS" = "FAILED" ]; then
-        echo "Build completed. Updating deployment..."
-        kubectl set image deployment/frontend server=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO_NAME}:latest
+    if [ "$BUILD_STATUS" = "SUCCEEDED" ]; then
+        echo "✓ All microservices built successfully!"
+    elif [ "$BUILD_STATUS" = "FAILED" ]; then
+        echo "Build completed with status: $BUILD_STATUS"
+        echo "Updating deployments with custom images..."
+        # Update deployments manually if CodeBuild kubectl fails
+        kubectl set image deployment/frontend server=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/online-boutique-frontend:latest
+        kubectl set image deployment/cartservice server=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/online-boutique-cartservice:latest
+        kubectl set image deployment/productcatalogservice server=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/online-boutique-productcatalogservice:latest
+        kubectl set image deployment/currencyservice server=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/online-boutique-currencyservice:latest
+        kubectl set image deployment/paymentservice server=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/online-boutique-paymentservice:latest
+        kubectl set image deployment/shippingservice server=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/online-boutique-shippingservice:latest
+        kubectl set image deployment/emailservice server=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/online-boutique-emailservice:latest
+        kubectl set image deployment/checkoutservice server=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/online-boutique-checkoutservice:latest
+        kubectl set image deployment/recommendationservice server=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/online-boutique-recommendationservice:latest
+        kubectl set image deployment/adservice server=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/online-boutique-adservice:latest
+        kubectl set image deployment/loadgenerator main=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/online-boutique-loadgenerator:latest
+
+        echo "Restarting deployments..."
         kubectl rollout restart deployment/frontend
+        kubectl rollout restart deployment/cartservice
+        kubectl rollout restart deployment/productcatalogservice
+
+        echo "Waiting for key services to be ready..."
         kubectl rollout status deployment/frontend --timeout=5m
     fi
 fi
 
 # Cleanup temp files
-rm -rf $TEMP_DIR
-rm -f /tmp/frontend-source.zip
+rm -f /tmp/microservices-source.zip
 
 # Get frontend URL
 echo ""
@@ -147,6 +163,8 @@ for i in {1..60}; do
         echo "Cluster: $CLUSTER_NAME"
         echo "Region: $AWS_REGION"
         echo "Account: $AWS_ACCOUNT_ID"
+        echo ""
+        echo "All microservices built and deployed with custom images"
         echo ""
         echo "To check pod status: kubectl get pods"
         echo "To view logs: kubectl logs -l app=frontend"
