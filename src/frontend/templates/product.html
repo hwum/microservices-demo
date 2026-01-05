@@ -31,9 +31,43 @@
       <div class="product-info col-md-5">
         <div class="product-wrapper">
 
+          <!-- Like Button -->
+          <button type="button" class="product-like-btn" aria-label="Add to favorites">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2">
+              <path
+                d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z">
+              </path>
+            </svg>
+          </button>
+          
+          <!-- Description -->
+          <p class="product-description">{{ $.product.Item.Description }}</p>
+          
+          <!-- Add to Cart Button -->
+          <form method="POST" action="{{ $.baseUrl }}/cart">
+            <input type="hidden" name="product_id" value="{{$.product.Item.Id}}" />
+            <button type="submit" class="cymbal-button-primary">Add To Cart</button>
+          
+            <!-- Price -->
+            <p class="product-price">{{ renderMoney $.product.Price }}</p>
+          
+            <!-- Number of Items -->
+            <div class="product-quantity-dropdown">
+              <select name="quantity" id="quantity">
+                <option>1</option>
+                <option>2</option>
+                <option>3</option>
+                <option>4</option>
+                <option>5</option>
+                <option>10</option>
+              </select>
+              <img src="{{ $.baseUrl }}/static/icons/Hipster_DownArrow.svg" alt="">
+            </div>
+          </form>
+          
+          <!-- Product Name -->
           <h2>{{ $.product.Item.Name }}</h2>
-          <p class="product-price">{{ renderMoney $.product.Price }}</p>
-          <p>{{ $.product.Item.Description }}</p>
 
           {{ if $.packagingInfo }}
           <div class="product-packaging">
@@ -53,21 +87,6 @@
           </div>
           {{ end }}
 
-          <form method="POST" action="{{ $.baseUrl }}/cart">
-            <input type="hidden" name="product_id" value="{{$.product.Item.Id}}" />
-            <div class="product-quantity-dropdown">
-              <select name="quantity" id="quantity">
-                <option>1</option>
-                <option>2</option>
-                <option>3</option>
-                <option>4</option>
-                <option>5</option>
-                <option>10</option>
-              </select>
-              <img src="{{ $.baseUrl }}/static/icons/Hipster_DownArrow.svg" alt="">
-            </div>
-            <button type="submit" class="cymbal-button-primary">Add To Cart</button>
-          </form>
         </div>
       </div>
     </div>

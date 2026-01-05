@@ -29,6 +29,7 @@ RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} CGO_ENABLED=0 go build -ldflags="-s -w
 FROM gcr.io/distroless/static
 WORKDIR /src
 COPY --from=builder /go/bin/frontend /src/server
+# Cache bust: 2026-01-05-v2
 COPY ./templates ./templates
 COPY ./static ./static
 

@@ -424,6 +424,29 @@ similar to that of the hot-products-row.
   font-size: 28px;
 }
 
+.h-product .product-like-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  color: #666;
+  transition: color 0.2s ease;
+}
+
+.h-product .product-like-btn:hover {
+  color: #e53935;
+}
+
+.h-product .product-like-btn svg {
+  display: block;
+}
+
+.h-product .product-description {
+  font-size: 16px;
+  line-height: 1.5;
+  color: #333;
+  margin-bottom: 16px;
+}
 .h-product .product-info .product-wrapper {
   margin-left: 15px;
 }
