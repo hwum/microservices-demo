@@ -20,6 +20,7 @@ WORKDIR /src
 # restore dependencies
 COPY go.mod go.sum ./
 RUN go mod download
+# Cache bust: 2026-01-05-CNY
 COPY . .
 
 # Skaffold passes in debug-oriented compiler flags
