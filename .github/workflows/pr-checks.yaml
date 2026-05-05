@@ -1,0 +1,83 @@
+# Copyright 2026 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: "PR Checks"
+
+on:
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate PR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Show PR info
+        run: |
+          echo "PR #${{ github.event.pull_request.number }}"
+          echo "Title: ${{ github.event.pull_request.title }}"
+          echo "Base branch: ${{ github.event.pull_request.base.ref }}"
+          echo "Head branch: ${{ github.event.pull_request.head.ref }}"
+
+      - name: List changed files
+        run: |
+          git fetch origin ${{ github.event.pull_request.base.ref }}
+          echo "Changed files:"
+          git diff --name-only origin/${{ github.event.pull_request.base.ref }}...HEAD
+
+  go-tests:
+    name: Go Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Run Go tests
+        run: |
+          for GO_PACKAGE in "shippingservice" "productcatalogservice" "frontend/validator" "frontend/money"; do
+            echo "Testing $GO_PACKAGE..."
+            pushd src/$GO_PACKAGE
+            go test ./... || exit 1
+            popd
+          done
+
+  validate-json:
+    name: Validate JSON
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate products.json
+        run: |
+          python3 -m json.tool src/productcatalogservice/products.json > /dev/null
+          echo "products.json is valid"
+
+      - name: Validate currency_conversion.json
+        run: |
+          python3 -m json.tool src/currencyservice/data/currency_conversion.json > /dev/null
+          echo "currency_conversion.json is valid"

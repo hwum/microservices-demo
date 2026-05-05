@@ -2,6 +2,8 @@
 
 Quick reference for deploying Online Boutique to AWS EKS.
 
+> Note: PRs are validated via GitHub Actions (see `.github/workflows/pr-checks.yaml`).
+
 ## 🚀 Quick Start
 
 ```bash
