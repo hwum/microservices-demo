@@ -1,5 +1,5 @@
 name: Generated Orchestration
-on: [workflow_dispatch]
+on: [pull_request, push, workflow_dispatch]
 
 jobs:
   build:
@@ -34,24 +34,3 @@ jobs:
     steps:
       - name: Run integration tests
         run: echo "Running integration test suite against QA..."
-  load-test:
-    runs-on: ubuntu-latest
-    needs: [qa-deploy]
-    steps:
-      - name: Run load test
-        run: echo "Executing target load vectors against QA..."
-  performance-test:
-    runs-on: ubuntu-latest
-    needs: [qa-deploy]
-    steps:
-      - name: Run performance test
-        run: echo "Measuring latency and throughput on QA..."
-  prod-deploy:
-    runs-on: ubuntu-latest
-    environment: production
-    needs: [integration-test, load-test, performance-test]
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-      - name: Production Traffic Swap
-        run: echo "Initiating canary or green rollout to production..."
