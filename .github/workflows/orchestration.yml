@@ -34,3 +34,18 @@ jobs:
     steps:
       - name: Run integration tests
         run: echo "Running integration test suite against QA..."
+  performance-test:
+    runs-on: ubuntu-latest
+    needs: [qa-deploy]
+    steps:
+      - name: Run performance test
+        run: echo "Measuring latency and throughput on QA..."
+  prod-deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    needs: [integration-test, performance-test]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      - name: Production Traffic Swap
+        run: echo "Initiating canary or green rollout to production..."
